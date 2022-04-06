@@ -1,0 +1,4 @@
+class TwoVarClass {
+    static int staticVar;
+    field boolean fieldVar;
+}

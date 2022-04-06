@@ -6,11 +6,13 @@ import jp.pois.pg4scala.lexer.MatchedContext
 import jp.pois.pg4scala.lexer.Regex.CharacterClass.{Alphabet, Digit, Word}
 import jp.pois.pg4scala.lexer.Regex._
 
+import java.io.Reader
+
 object Lexer {
   private val lexer = jp.pois.pg4scala.lexer.Lexer.builder
     .ignore(' ', '\n', '\t')
-    .ignore("//" * not('\n') * '\n')
-    .ignore("/*" * (not('*') | ('*' * not('/'))) * "*/")
+    .ignore("//" * not('\n').rep0 * '\n')
+    .ignore("/*" * (not('*') | ('*' * not('/'))).rep0 * "*/")
     .rule('(', LParen)
     .rule(')', RParen)
     .rule('[', LBracket)
@@ -52,9 +54,11 @@ object Lexer {
     .rule("null", Null)
     .rule("this", This)
     .rule(('1' to '9') * Digit.rep0, { case MatchedContext(str, _, _) => Integer(str.toInt) }: TokenGenerator)
-    .rule('"' * ((' ' to '!') | ('#' to '~')) * '"', { case MatchedContext(str, _, _) => QuotedString(str.substring(1, str.length - 1)) }: TokenGenerator)
+    .rule('"' * not('\n', '"').rep0 * '"', { case MatchedContext(str, _, _) => QuotedString(str.substring(1, str.length - 1)) }: TokenGenerator)
     .rule((Alphabet | '_') * (Word | '_').rep0, { case MatchedContext(str, _, _) => Identifier(str) }: TokenGenerator)
     .build
+
+  def lex(reader: Reader): LazyList[Token] = lexer.lex(reader)
 
   sealed trait JackToken extends Token
   sealed trait SymToken extends JackToken
