@@ -1,63 +1,26 @@
 package com.github.nishi_7
 
 import Lexer.Identifier
+import Parser.Symbols._
 import ParserValue.ClassVar.{Field, Static, VarType}
-import ParserValue.Type.ClassRef
-import ParserValue.{Binary, Class, ClassVar, ConstantExpression, Expression, ReferenceExpression, Statement, Subroutine, Type, Unary}
 import ParserValue.ReferenceExpression.{ArrayAccess, VarRef}
+import ParserValue.Type.ClassRef
+import ParserValue.{Binary, Class, ClassVar, ConstantExpression, Expression, ReferenceExpression, Subroutine, Unary}
 
+import jp.pois.pg4scala.common.Token
 import jp.pois.pg4scala.parser.Character._
 import jp.pois.pg4scala.parser.NonTerminalSymbol
 import jp.pois.pg4scala.parser.Parser.RGParam
 
 //noinspection TypeAnnotation
 object Parser {
-  type DefaultRGP = RGParam[ParserValue]
-  type PVList[+T <: ParserValue] = ParserValue.List[T]
-  type PVOption[+T <: ParserValue] = ParserValue.Option[T]
+  def parse(tokens: LazyList[Token]): Class = parser.parse(tokens).asInstanceOf[Class]
 
-  val Root = NonTerminalSymbol("ProgramStructure")
-  val ClassVarDec = NonTerminalSymbol("ClassVarDec")
-  val SubroutineDec = NonTerminalSymbol("SubroutineDec")
-  val StaticOrField = NonTerminalSymbol("StaticOrField")
-  val Type = NonTerminalSymbol("Type")
-  val VarNameRep = NonTerminalSymbol("VarNameRep")
-  val VarName = NonTerminalSymbol("VarName")
-  val SubroutineCat = NonTerminalSymbol("FunctionCat")
-  val ReturnType = NonTerminalSymbol("ReturnType")
-  val SubroutineName = NonTerminalSymbol("SubroutineName")
-  val Parameter = NonTerminalSymbol("Parameter")
-  val SubroutineBody = NonTerminalSymbol("SubroutineBody")
-  val VarDec = NonTerminalSymbol("VarDec")
+  private type DefaultRGP = RGParam[ParserValue]
+  private type PVList[+T <: ParserValue] = ParserValue.List[T]
+  private type PVOption[+T <: ParserValue] = ParserValue.Option[T]
 
-  val Statements = NonTerminalSymbol("Statements")
-  val Statement = NonTerminalSymbol("Statement")
-  val LetStatement = NonTerminalSymbol("LetStatement")
-  val IfStatement = NonTerminalSymbol("IfStatement")
-  val WhileStatement = NonTerminalSymbol("WhileStatement")
-  val DoStatement = NonTerminalSymbol("DoStatement")
-  val ReturnStatement = NonTerminalSymbol("ReturnStatement")
-  val ArrayIndex = NonTerminalSymbol("ArrayIndexOpt")
-  val ElseOpt = NonTerminalSymbol("ElseOpt")
-  val ExpressionOpt = NonTerminalSymbol("ExpressionOpt")
-
-  val Expression = NonTerminalSymbol("Expression")
-  val Term0 = NonTerminalSymbol("Term0") // ( exp ), constant, function call and array access
-  val Term1 = NonTerminalSymbol("Term1") // unary -, ~
-  val Term2 = NonTerminalSymbol("Term2") // *, /
-  val Term3 = NonTerminalSymbol("Term3") // +, -
-  val Term4 = NonTerminalSymbol("Term4") // <. >
-  val Term5 = NonTerminalSymbol("Term5") // =
-  val Term6 = NonTerminalSymbol("Term6") // &
-  val Term7 = NonTerminalSymbol("Term7") // |
-  val SubroutineCall = NonTerminalSymbol("SubroutineCall")
-  val ArgumentList = NonTerminalSymbol("ExpressionList")
-  val Receiver = NonTerminalSymbol("Receiver")
-
-  val UnaryOp = NonTerminalSymbol("UnaryOp")
-  val KeywordConstant = NonTerminalSymbol("KeywordConstant")
-
-  val parser = {
+  private val parser = {
     val IdentifierToken = Terminal(Lexer.Identifier.getClass)
     val IntegerToken = Terminal(Lexer.Integer.getClass)
     val QuotedStringToken = Terminal(Lexer.QuotedString.getClass)
@@ -69,12 +32,12 @@ object Parser {
       .rule(Root, charSeq(Lexer.Class, IdentifierToken, Lexer.LBrace, ClassVarDec, SubroutineDec, Lexer.RBrace),
         { seq => Class(seq(1).asTokenOf[Identifier].name, seq(3).asValueOf[PVList[ClassVar]], seq(4).asValueOf[PVList[Subroutine]]) }
       )
-      .ruleRep0[PVList[ClassVar], PVList[ClassVar]](
-        ClassVarDec, charSeq(StaticOrField, Type, VarNameRep, Lexer.SemiColon),
+      .ruleRep0(ClassVarDec, charSeq(StaticOrField, Type, VarNameRep, Lexer.SemiColon),
         { seq: DefaultRGP =>
-          val typ = seq(1).asValueOf[Type]
+          val varType = seq.head.asValueOf[VarType]
+          val typ = seq(1).asValueOf[ParserValue.Type]
           seq(2).asValueOf[PVList[ParserValue.Identifier]]
-            .map { id => ClassVar(seq.head.asValueOf[VarType], typ, id.name) }
+            .map { id => ClassVar(varType, typ, id.name) }
             .foldRight[PVList[ClassVar]](ParserValue.List.Empty)(ParserValue.List.Cons[ClassVar])
         },
         { (cur: PVList[ClassVar], acc: PVList[ClassVar]) => cur.foldRight(acc)(ParserValue.List.Cons[ClassVar]) },
@@ -86,8 +49,7 @@ object Parser {
       .rule(Type, charSeq(Lexer.Char), { _ => ParserValue.Type.Char })
       .rule(Type, charSeq(Lexer.Boolean), { _ => ParserValue.Type.Boolean })
       .rule(Type, charSeq(IdentifierToken), { seq => ClassRef(seq.head.asTokenOf[Lexer.Identifier].name) })
-      .ruleRep1(
-        VarNameRep, charSeq(VarName), charSeq(Lexer.Comma),
+      .ruleRep1(VarNameRep, charSeq(VarName), charSeq(Lexer.Comma),
         { seq: DefaultRGP => seq.head.asValueOf[ParserValue.Identifier] },
         { (hd: ParserValue.Identifier, tl: PVList[ParserValue.Identifier]) => ParserValue.List.Cons(hd, tl) },
         ParserValue.List.Empty
@@ -128,8 +90,8 @@ object Parser {
         }
       )
       .ruleRep0(Statements, charSeq(Statement),
-        { seq: DefaultRGP => seq.head.asValueOf[PVList[Statement]] },
-        { (cur: PVList[Statement], acc: PVList[Statement]) => cur.foldRight(acc)(ParserValue.List.Cons[Statement]) },
+        { seq: DefaultRGP => seq.head.asValueOf[PVList[ParserValue.Statement]] },
+        { (cur: PVList[ParserValue.Statement], acc: PVList[ParserValue.Statement]) => cur.foldRight(acc)(ParserValue.List.Cons[ParserValue.Statement]) },
         ParserValue.List.Empty
       )
       .rule(Statement, charSeq(LetStatement), passThroughHead)
@@ -150,10 +112,10 @@ object Parser {
         { opt: Option[ParserValue] => ParserValue.Option.fromOption(opt) }
       )
       .rule(IfStatement, charSeq(Lexer.If, Lexer.LParen, Expression, Lexer.RParen, Lexer.LBrace, Statements, Lexer.RBrace, ElseOpt),
-        { seq => ParserValue.Statement.If(seq(2).asValueOf[Expression], seq(5).asValueOf[PVList[Statement]], seq(7).asValueOf[PVList[Statement]]) }
+        { seq => ParserValue.Statement.If(seq(2).asValueOf[Expression], seq(5).asValueOf[PVList[ParserValue.Statement]], seq(7).asValueOf[PVList[ParserValue.Statement]]) }
       )
-      .ruleOpt(ElseOpt, charSeq(Lexer.Else, Lexer.LBrace, Statements, Lexer.RBrace), { seq => seq(2).asValueOf[PVList[Statement]] },
-        { opt: Option[PVList[Statement]] =>
+      .ruleOpt(ElseOpt, charSeq(Lexer.Else, Lexer.LBrace, Statements, Lexer.RBrace), { seq => seq(2).asValueOf[PVList[ParserValue.Statement]] },
+        { opt: Option[PVList[ParserValue.Statement]] =>
           opt match {
             case Some(value) => value
             case None => ParserValue.List.Empty
@@ -161,7 +123,7 @@ object Parser {
         }
       )
       .rule(WhileStatement, charSeq(Lexer.While, Lexer.LParen, Expression, Lexer.RParen, Lexer.LBrace, Statements, Lexer.RBrace),
-        { seq => ParserValue.Statement.While(seq(2).asValueOf[Expression], seq(5).asValueOf[PVList[Statement]]) }
+        { seq => ParserValue.Statement.While(seq(2).asValueOf[Expression], seq(5).asValueOf[PVList[ParserValue.Statement]]) }
       )
       .rule(DoStatement, charSeq(Lexer.Do, SubroutineCall, Lexer.SemiColon), { seq => seq(1).asValue })
       .rule(ReturnStatement, charSeq(Lexer.Return, ExpressionOpt, Lexer.SemiColon),
@@ -228,7 +190,50 @@ object Parser {
       .build
   }
 
-  def genBinary(f: (Expression, Expression) => Expression)(seq: DefaultRGP) = {
+  private def genBinary(f: (Expression, Expression) => Expression)(seq: DefaultRGP) = {
     f(seq.head.asValueOf[Expression], seq(2).asValueOf[Expression])
+  }
+
+  object Symbols {
+    val Root = NonTerminalSymbol("ProgramStructure")
+    val ClassVarDec = NonTerminalSymbol("ClassVarDec")
+    val SubroutineDec = NonTerminalSymbol("SubroutineDec")
+    val StaticOrField = NonTerminalSymbol("StaticOrField")
+    val Type = NonTerminalSymbol("Type")
+    val VarNameRep = NonTerminalSymbol("VarNameRep")
+    val VarName = NonTerminalSymbol("VarName")
+    val SubroutineCat = NonTerminalSymbol("FunctionCat")
+    val ReturnType = NonTerminalSymbol("ReturnType")
+    val SubroutineName = NonTerminalSymbol("SubroutineName")
+    val Parameter = NonTerminalSymbol("Parameter")
+    val SubroutineBody = NonTerminalSymbol("SubroutineBody")
+    val VarDec = NonTerminalSymbol("VarDec")
+
+    val Statements = NonTerminalSymbol("Statements")
+    val Statement = NonTerminalSymbol("Statement")
+    val LetStatement = NonTerminalSymbol("LetStatement")
+    val IfStatement = NonTerminalSymbol("IfStatement")
+    val WhileStatement = NonTerminalSymbol("WhileStatement")
+    val DoStatement = NonTerminalSymbol("DoStatement")
+    val ReturnStatement = NonTerminalSymbol("ReturnStatement")
+    val ArrayIndex = NonTerminalSymbol("ArrayIndexOpt")
+    val ElseOpt = NonTerminalSymbol("ElseOpt")
+    val ExpressionOpt = NonTerminalSymbol("ExpressionOpt")
+
+    val Expression = NonTerminalSymbol("Expression")
+    val Term0 = NonTerminalSymbol("Term0") // ( exp ), constant, function call and array access
+    val Term1 = NonTerminalSymbol("Term1") // unary -, ~
+    val Term2 = NonTerminalSymbol("Term2") // *, /
+    val Term3 = NonTerminalSymbol("Term3") // +, -
+    val Term4 = NonTerminalSymbol("Term4") // <. >
+    val Term5 = NonTerminalSymbol("Term5") // =
+    val Term6 = NonTerminalSymbol("Term6") // &
+    val Term7 = NonTerminalSymbol("Term7") // |
+    val SubroutineCall = NonTerminalSymbol("SubroutineCall")
+    val ArgumentList = NonTerminalSymbol("ExpressionList")
+    val Receiver = NonTerminalSymbol("Receiver")
+
+    val UnaryOp = NonTerminalSymbol("UnaryOp")
+    val KeywordConstant = NonTerminalSymbol("KeywordConstant")
   }
 }
