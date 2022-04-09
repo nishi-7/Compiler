@@ -93,7 +93,7 @@ Ignore me !
     assertLex(""""hello, world"""")(QuotedString("hello, world"))
     assertLex(""""こんにちは，世界"""")(QuotedString("こんにちは，世界"))
 
-    assertFail("0123")
+    assertNqLex("0123")(Integer(123))
     assertFail("\"hello!\nworld\"")
   }
 

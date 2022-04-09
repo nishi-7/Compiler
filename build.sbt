@@ -11,5 +11,6 @@ lazy val root = (project in file("."))
 resolvers += Resolver.githubPackages("pois0", "pg4scala")
 githubTokenSource := TokenSource.Environment("GITHUB_TOKEN") || TokenSource.GitConfig("github.token")
 
-libraryDependencies += "jp.pois" %% "pg4scala-core" % "0.3.2"
+libraryDependencies += "jp.pois" %% "pg4scala-core" % "0.3.3"
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.11" % Test
+libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.11" % "runtime"

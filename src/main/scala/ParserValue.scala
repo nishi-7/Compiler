@@ -109,7 +109,7 @@ object ParserValue {
     case class Cons[+T <: ParserValue](hd: T, tl: List[T]) extends List[T] {
       override def length: Int = tail.length + 1
 
-      override def iterator: Iterator[T] = Iterator(head) ++ tail.iterator
+      override def iterator: Iterator[T] = Iterator(hd) ++ tl.iterator
 
       override def apply(i: Int): T = if (i == 0) hd else tl.apply(i - 1)
     }
@@ -130,7 +130,7 @@ object ParserValue {
       override def toOption: scala.Option[T] = scala.Some(value)
     }
     case object None extends Option[Nothing] {
-      override def toOption: scala.Option[Nothing] = ???
+      override def toOption: scala.Option[Nothing] = scala.None
     }
 
     def fromOption[T <: ParserValue](option: scala.Option[T]): Option[T] = option match {

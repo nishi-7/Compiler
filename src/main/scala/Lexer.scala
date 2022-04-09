@@ -53,7 +53,7 @@ object Lexer {
     .rule("false", False)
     .rule("null", Null)
     .rule("this", This)
-    .rule(('1' to '9') * Digit.rep0, { case MatchedContext(str, _, _) => Integer(str.toInt) }: TokenGenerator)
+    .rule(('1' to '9') * Digit.rep0 | '0', { case MatchedContext(str, _, _) => Integer(str.toInt) }: TokenGenerator)
     .rule('"' * not('\n', '"').rep0 * '"', { case MatchedContext(str, _, _) => QuotedString(str.substring(1, str.length - 1)) }: TokenGenerator)
     .rule((Alphabet | '_') * (Word | '_').rep0, { case MatchedContext(str, _, _) => Identifier(str) }: TokenGenerator)
     .build

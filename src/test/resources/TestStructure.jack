@@ -1,0 +1,48 @@
+class TestStructure {
+    static int _sv1, _sv2;
+    field TestStructure ts;
+
+    constructor TestStructure new() {
+        return this;
+    }
+
+    method void hoge(int intArg, char charArg, boolean booleanArg) {
+        var boolean bl1, bl2;
+    }
+
+    function boolean pe() {
+        var TestStructure ge;
+        var TestStructure go;
+
+        let ge = 1;
+        let go[1] = 2;
+        if (ge) {
+            return 1;
+            return 2;
+        } else {
+            return 1;
+            return 2;
+        }
+
+        if (ge) {
+            return true;
+        }
+
+        while (ge) {
+            return 1;
+            return 2;
+        }
+
+        do TestStructure.pe();
+        do func(1, 2, 3);
+
+        return true;
+        return false;
+        return null;
+        return this;
+
+        return 12345;
+        return "hello!";
+        return -1 + 2 - 3 * 4 / 5 & 6 | 7 > 8 < 9 = 0 = ge.Way() + bo[123] - (~24 * -53);
+    }
+}
