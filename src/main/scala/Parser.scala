@@ -57,8 +57,7 @@ object Parser {
       .rule(Type, charSeq(IdentifierToken), { seq => ClassRef(seq.head.asTokenOf[Lexer.Identifier].name) })
       .ruleRep1(VarNameRep, charSeq(VarName), charSeq(Lexer.Comma),
         { seq: DefaultRGP => seq.head.asValueOf[ParserValue.Identifier] },
-        { (hd: ParserValue.Identifier, tl: PVList[ParserValue.Identifier]) => ParserValue.List.Cons(hd, tl) },
-        ParserValue.List.Empty
+        ParserValue.List.Cons[ParserValue.Identifier], ParserValue.List.Empty
       )
       .rule(VarName, charSeq(IdentifierToken), identifierGenerator)
       .ruleRep0(SubroutineDec,
@@ -72,8 +71,8 @@ object Parser {
             seq(6).asValueOf[Subroutine.Body]
           )
         },
-        { (hd: Subroutine, tl: PVList[Subroutine]) => ParserValue.List.Cons(hd, tl) },
-        ParserValue.List.Empty)
+        ParserValue.List.Cons[Subroutine], ParserValue.List.Empty
+      )
       .rule(SubroutineCat, charSeq(Lexer.Constructor), { _ => ParserValue.Subroutine.Constructor })
       .rule(SubroutineCat, charSeq(Lexer.Function), { _ => ParserValue.Subroutine.Function })
       .rule(SubroutineCat, charSeq(Lexer.Method), { _ => ParserValue.Subroutine.Method })
@@ -84,8 +83,7 @@ object Parser {
         { seq: DefaultRGP =>
           Subroutine.Parameter(seq.head.asValueOf[ParserValue.Type], seq(1).asTokenOf[Lexer.Identifier].name)
         },
-        { (hd: Subroutine.Parameter, tl: PVList[Subroutine.Parameter]) => ParserValue.List.Cons(hd, tl) },
-        ParserValue.List.Empty
+        ParserValue.List.Cons[Subroutine.Parameter], ParserValue.List.Empty
       )
       .rule(SubroutineBody, charSeq(Lexer.LBrace, VarDec, Statements, Lexer.RBrace),
         { seq => Subroutine.Body(
@@ -96,17 +94,15 @@ object Parser {
           val typ = seq(1).asValueOf[ParserValue.Type]
           seq(2).asValueOf[ParserValue.List[ParserValue.Identifier]]
             .map { id => ParserValue.Var(typ, id.name) }
-            .foldRight[PVList[ParserValue.Var]](ParserValue.List.Empty) { (hd, tl) => ParserValue.List.Cons(hd, tl) }
+            .foldRight[PVList[ParserValue.Var]](ParserValue.List.Empty)(ParserValue.List.Cons[ParserValue.Var])
         },
         { (cur: PVList[ParserValue.Var], acc: PVList[ParserValue.Var]) =>
           cur.foldRight(acc)(ParserValue.List.Cons[ParserValue.Var])
         },
         ParserValue.List.Empty
       )
-      .ruleRep0(Statements, charSeq(Statement),
-        { seq: DefaultRGP => seq.head.asValueOf[ParserValue.Statement] },
-        { (hd: ParserValue.Statement, tl: PVList[ParserValue.Statement]) => ParserValue.List.Cons(hd, tl) },
-        ParserValue.List.Empty
+      .ruleRep0(Statements, charSeq(Statement), { seq: DefaultRGP => seq.head.asValueOf[ParserValue.Statement] },
+        ParserValue.List.Cons[ParserValue.Statement], ParserValue.List.Empty
       )
       .rule(Statement, charSeq(LetStatement), passThroughHead)
       .rule(Statement, charSeq(IfStatement), passThroughHead)
@@ -137,12 +133,7 @@ object Parser {
       )
       .ruleOpt(ElseOpt, charSeq(Lexer.Else, Lexer.LBrace, Statements, Lexer.RBrace),
         { seq => seq(2).asValueOf[PVList[ParserValue.Statement]]},
-        { opt: Option[PVList[ParserValue.Statement]] =>
-          opt match {
-            case Some(value) => value
-            case None => ParserValue.List.Empty
-          }
-        }
+        { opt: Option[PVList[ParserValue.Statement]] => opt.getOrElse(ParserValue.List.Empty) }
       )
       .rule(WhileStatement,
         charSeq(Lexer.While, Lexer.LParen, Expression, Lexer.RParen, Lexer.LBrace, Statements, Lexer.RBrace),
@@ -212,7 +203,7 @@ object Parser {
         }
       )
       .ruleRep0(ArgumentList, charSeq(Expression), charSeq(Lexer.Comma), passThroughHead,
-        { (hd: ParserValue, tl: PVList[ParserValue]) => ParserValue.List.Cons(hd, tl) },
+        ParserValue.List.Cons[ParserValue],
         ParserValue.List.Empty
       )
       .rule(KeywordConstant, charSeq(Lexer.True), { _ => ConstantExpression.True })
