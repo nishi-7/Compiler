@@ -1,14 +1,15 @@
 package com.github.nishi_7
+package front
 
-import Lexer.Identifier
-import Parser.Symbols._
-import ParserValue.ClassVar.{Field, Static, VarType}
-import ParserValue.ReferenceExpression.{ArrayAccess, VarRef}
-import ParserValue.Type.ClassRef
-import ParserValue.{Binary, Class, ClassVar, ConstantExpression, Expression, ReferenceExpression, Subroutine, Unary}
+import front.Lexer.Identifier
+import front.Parser.Symbols._
+import front.ParserValue.ClassVar.{Field, Static, VarType}
+import front.ParserValue.ReferenceExpression.{ArrayAccess, VarRef}
+import front.ParserValue.Type.ClassRef
+import front.ParserValue.{Binary, Class, ClassVar, ConstantExpression, Expression, ReferenceExpression, Subroutine, Unary}
 
 import jp.pois.pg4scala.common.Token
-import jp.pois.pg4scala.parser.Character._
+import jp.pois.pg4scala.parser.Character.{Terminal, charSeq}
 import jp.pois.pg4scala.parser.NonTerminalSymbol
 import jp.pois.pg4scala.parser.Parser.RGParam
 
@@ -86,9 +87,13 @@ object Parser {
         ParserValue.List.Cons[Subroutine.Parameter], ParserValue.List.Empty
       )
       .rule(SubroutineBody, charSeq(Lexer.LBrace, VarDec, Statements, Lexer.RBrace),
-        { seq => Subroutine.Body(
-          seq(1).asValueOf[PVList[ParserValue.Var]].reverse,
-          seq(2).asValueOf[PVList[ParserValue.Statement]].reverse) })
+        { seq =>
+          Subroutine.Body(
+            seq(1).asValueOf[PVList[ParserValue.Var]].reverse,
+            seq(2).asValueOf[PVList[ParserValue.Statement]].reverse
+          )
+        }
+      )
       .ruleRep0(VarDec, charSeq(Lexer.Var, Type, VarNameRep, Lexer.SemiColon),
         { seq: DefaultRGP =>
           val typ = seq(1).asValueOf[ParserValue.Type]
@@ -132,7 +137,7 @@ object Parser {
         }
       )
       .ruleOpt(ElseOpt, charSeq(Lexer.Else, Lexer.LBrace, Statements, Lexer.RBrace),
-        { seq => seq(2).asValueOf[PVList[ParserValue.Statement]]},
+        { seq => seq(2).asValueOf[PVList[ParserValue.Statement]] },
         { opt: Option[PVList[ParserValue.Statement]] => opt.getOrElse(ParserValue.List.Empty) }
       )
       .rule(WhileStatement,

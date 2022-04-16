@@ -1,7 +1,8 @@
 package com.github.nishi_7
+package front
 
-import ParserValue.ClassVar.VarType
-import ParserValue.Subroutine.{Parameter, SubroutineCat}
+import front.ParserValue.ClassVar.VarType
+import front.ParserValue.Subroutine.{Parameter, SubroutineCat}
 
 sealed trait ParserValue
 

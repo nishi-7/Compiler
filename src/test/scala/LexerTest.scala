@@ -1,7 +1,7 @@
 package com.github.nishi_7
 
-import Lexer._
-
+import com.github.nishi_7.front.Lexer
+import com.github.nishi_7.front.Lexer._
 import jp.pois.pg4scala.common.Token
 import jp.pois.pg4scala.common.Token.EOF
 import jp.pois.pg4scala.lexer.exceptions.MismatchedCharException

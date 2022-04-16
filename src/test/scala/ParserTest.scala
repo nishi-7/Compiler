@@ -1,11 +1,6 @@
 package com.github.nishi_7
 
-import ParserValue.ConstantExpression.This
-import ParserValue.ReferenceExpression.{ArrayAccess, SubroutineCall, VarRef}
-import ParserValue.Statement.Return
-import ParserValue.Subroutine.Parameter
-import ParserValue.{Binary, _}
-
+import com.github.nishi_7.front.{Lexer, Parser}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 
