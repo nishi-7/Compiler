@@ -16,7 +16,7 @@
     <orderEntry type="library" scope="RUNTIME" name="sbt: ch.qos.logback:logback-classic:1.2.11:jar" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="sbt: ch.qos.logback:logback-core:1.2.11:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe.scala-logging:scala-logging_2.13:3.9.4:jar" level="project" />
-    <orderEntry type="library" name="sbt: jp.pois:pg4scala-core_2.13:0.3.5:jar" level="project" />
+    <orderEntry type="library" name="sbt: jp.pois:pg4scala-core_2.13:0.3.6:jar" level="project" />
     <orderEntry type="library" scope="TEST" name="sbt: org.scala-lang.modules:scala-xml_2.13:2.0.1:jar" level="project" />
     <orderEntry type="library" name="sbt: org.scala-lang:scala-library:2.13.8:jar" level="project" />
     <orderEntry type="library" name="sbt: org.scala-lang:scala-reflect:2.13.8:jar" level="project" />
