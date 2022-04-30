@@ -21,7 +21,7 @@ Example:
 
 Of course the followings are also required.
 
-- >= JDK 10
+- \>= JDK 10
 - sbt
 
 ### Execute
