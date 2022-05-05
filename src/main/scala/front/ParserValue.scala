@@ -9,9 +9,11 @@ sealed trait ParserValue
 object ParserValue {
   sealed trait Node extends ParserValue
 
-  case class Class(name: String, classVars: Seq[ClassVar], subroutines: Seq[Subroutine]) extends Node
+  case class Class(imports: Import, name: String, classVars: Seq[ClassVar], subroutines: Seq[Subroutine]) extends Node
 
-  case class ClassVar(varType: VarType, typ: Type, name: String) extends Node
+  case class Import(classes: Seq[Identifier]) extends Node
+
+  case class ClassVar(varType: VarType, typ: TypeWrap, name: String) extends Node
 
   object ClassVar {
     sealed trait VarType extends Node
@@ -20,16 +22,16 @@ object ParserValue {
     case object Field extends VarType
   }
 
-  sealed trait Type extends Node
+  case class TypeWrap(value: Type) extends Node
 
-  object Type {
-    case object Int extends Type
-    case object Char extends Type
-    case object Boolean extends Type
-    case class ClassRef(name: String) extends Type
+  object TypeWrap {
+    val Int: TypeWrap = TypeWrap(Type.Int)
+    val Char: TypeWrap = TypeWrap(Type.Char)
+    val Boolean: TypeWrap = TypeWrap(Type.Boolean)
+    def ClassRef(name: String): TypeWrap = TypeWrap(Type.ClassRef(name))
   }
 
-  case class Subroutine(category: SubroutineCat, returnType: scala.Option[Type], name: String, params: Seq[Parameter], body: Subroutine.Body) extends Node
+  case class Subroutine(category: SubroutineCat, returnType: scala.Option[TypeWrap], name: String, params: Seq[Parameter], body: Subroutine.Body) extends Node
 
   object Subroutine {
     sealed trait SubroutineCat extends Node
@@ -38,12 +40,12 @@ object ParserValue {
     case object Function extends SubroutineCat
     case object Method extends SubroutineCat
 
-    case class Parameter(typ: Type, name: String) extends Node
+    case class Parameter(typ: TypeWrap, name: String) extends Node
 
     case class Body(vars: Seq[Var], statements: Seq[Statement]) extends Node
   }
 
-  case class Var(typ: Type, name: String) extends Node
+  case class Var(typ: TypeWrap, name: String) extends Node
 
   sealed trait Statement extends Node
 

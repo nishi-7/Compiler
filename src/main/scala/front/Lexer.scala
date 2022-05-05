@@ -12,6 +12,7 @@ import java.io.Reader
 object Lexer {
   private val lexer = jp.pois.pg4scala.lexer.Lexer.builder
     .ignore(' ', '\n', '\t', '\r')
+    .rule("//" * characterClass(' ', '\t').rep1 * "@import", Import)
     .ignore("//" * not('\n').rep0 * '\n' * '\r'.opt)
     .ignore("/*" * (not('*') | ('*' * not('/'))).rep0 * "*/")
     .rule('(', LParen)
@@ -54,6 +55,7 @@ object Lexer {
     .rule("false", False)
     .rule("null", Null)
     .rule("this", This)
+    .rule("import", Import)
     .rule(('1' to '9') * Digit.rep0 | '0', {case MatchedContext(str, _, _) => Integer(str.toInt)}: TokenGenerator)
     .rule('"' * not('\n', '"').rep0 * '"', {case MatchedContext(str, _, _) => QuotedString(str.substring(1, str.length - 1))}: TokenGenerator)
     .rule((Alphabet | '_') * (Word | '_').rep0, {case MatchedContext(str, _, _) => Identifier(str)}: TokenGenerator)
@@ -140,6 +142,8 @@ object Lexer {
   case object While extends Keyword
 
   case object Return extends Keyword
+
+  case object Import extends Keyword
 
   case object True extends ConstantValue with Keyword
 

@@ -1,10 +1,8 @@
 package com.github.nishi_7
-package backend
+package back
 
-import backend.SymbolTable._
-
-import com.github.nishi_7.front.ParserValue
-import com.github.nishi_7.front.ParserValue.Type
+import back.SymbolTable._
+import front.{ParserValue, Type}
 
 import scala.collection.mutable
 
@@ -30,22 +28,22 @@ class SymbolTable {
 
   def define(v: ParserValue.ClassVar): Unit = v.varType match {
     case ParserValue.ClassVar.Static => {
-      classVars(v.name) = StaticVar(v.typ, staticCount)
+      classVars(v.name) = StaticVar(v.typ.value, staticCount)
       staticCount += 1
     }
     case ParserValue.ClassVar.Field => {
-      classVars(v.name) = FieldVar(v.typ, fieldCount)
+      classVars(v.name) = FieldVar(v.typ.value, fieldCount)
       fieldCount += 1
     }
   }
 
   def define(v: ParserValue.Subroutine.Parameter): Unit = {
-    locals(v.name) = Argument(v.typ, argumentCount)
+    locals(v.name) = Argument(v.typ.value, argumentCount)
     argumentCount += 1
   }
 
   def define(v: ParserValue.Var): Unit = {
-    locals(v.name) = LocalVar(v.typ, localCount)
+    locals(v.name) = LocalVar(v.typ.value, localCount)
     localCount += 1
   }
 

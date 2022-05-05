@@ -1,6 +1,6 @@
 package com.github.nishi_7
 
-import backend.CompilationEngine
+import back.CodeGenerationEngine
 import front.{Lexer, Parser}
 
 import jp.pois.pg4scala.lexer.exceptions.MismatchedCharException
@@ -49,6 +49,6 @@ object Compiler {
 
   def compile(in: Reader, out: Writer): Unit = {
     val source = Parser.parse(Lexer.lex(in))
-    CompilationEngine.write(source, out)
+    CodeGenerationEngine.write(source, out)
   }
 }

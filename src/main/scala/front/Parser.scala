@@ -1,27 +1,23 @@
 package com.github.nishi_7
 package front
 
-import front.Lexer.Identifier
-import front.Parser.Symbols._
+import front.Lexer.{Identifier, SemiColon}
+import front.ParserSymbols._
 import front.ParserValue.ClassVar.{Field, Static, VarType}
 import front.ParserValue.ReferenceExpression.{ArrayAccess, VarRef}
-import front.ParserValue.Type.ClassRef
-import front.ParserValue.{Binary, Class, ClassVar, ConstantExpression, Expression, ReferenceExpression, Subroutine, Unary}
+import front.ParserValue.{Binary, Class, ClassVar, ConstantExpression, Expression, ReferenceExpression, Subroutine, TypeWrap, Unary}
 
-import jp.pois.pg4scala.common.Token
 import jp.pois.pg4scala.parser.Character.{Terminal, charSeq}
-import jp.pois.pg4scala.parser.NonTerminalSymbol
+import jp.pois.pg4scala.parser.{NonTerminalSymbol, Parser}
 import jp.pois.pg4scala.parser.Parser.RGParam
 
-//noinspection TypeAnnotation
-object Parser {
-  def parse(tokens: LazyList[Token]): Class = parser.parse(tokens).asInstanceOf[Class]
-
+object Parser extends ParserTrait[ParserValue, Class] {
   private type DefaultRGP = RGParam[ParserValue]
   private type PVList[+T <: ParserValue] = ParserValue.List[T]
   private type PVOption[+T <: ParserValue] = ParserValue.Option[T]
 
-  private val parser = {
+  //noinspection ZeroIndexToHead
+  override protected val parser: Parser[ParserValue] = {
     val IdentifierToken = Terminal(classOf[Lexer.Identifier])
     val IntegerToken = Terminal(classOf[Lexer.Integer])
     val QuotedStringToken = Terminal(classOf[Lexer.QuotedString])
@@ -30,19 +26,31 @@ object Parser {
     val passThroughHead = { seq: DefaultRGP => seq.head.asValue }
 
     jp.pois.pg4scala.parser.Parser.builder[ParserValue](Root)
-      .rule(Root, charSeq(Lexer.Class, IdentifierToken, Lexer.LBrace, ClassVarDec, SubroutineDec, Lexer.RBrace),
+      .rule(Root, charSeq(Import, Lexer.Class, IdentifierToken, Lexer.LBrace, ClassVarDec, SubroutineDec, Lexer.RBrace),
         { seq =>
           Class(
-            seq(1).asTokenOf[Identifier].name,
-            seq(3).asValueOf[PVList[ClassVar]].reverse,
-            seq(4).asValueOf[PVList[Subroutine]].reverse
+            ParserValue.Import(seq(0).asValueOf[PVList[ParserValue.Identifier]]),
+            seq(2).asTokenOf[Identifier].name,
+            seq(4).asValueOf[PVList[ClassVar]].reverse,
+            seq(5).asValueOf[PVList[Subroutine]].reverse
           )
         }
+      )
+      .ruleRep0(Import, charSeq(Import, ClassNames, SemiColon),
+        { seq: DefaultRGP => seq(2).asValueOf[PVList[ParserValue.Identifier]] },
+        { (cur: PVList[ParserValue.Identifier], acc: PVList[ParserValue.Identifier]) =>
+          cur.foldRight(acc)(ParserValue.List.Cons[ParserValue.Identifier])
+        },
+        ParserValue.List.Empty
+      )
+      .ruleRep1(ClassNames, charSeq(IdentifierToken),
+        { seq: DefaultRGP => seq.head.asValueOf[ParserValue.Identifier] },
+        ParserValue.List.Cons[ParserValue.Identifier], ParserValue.List.Empty
       )
       .ruleRep0(ClassVarDec, charSeq(StaticOrField, Type, VarNameRep, Lexer.SemiColon),
         { seq: DefaultRGP =>
           val varType = seq.head.asValueOf[VarType]
-          val typ = seq(1).asValueOf[ParserValue.Type]
+          val typ = seq(1).asValueOf[ParserValue.TypeWrap]
           seq(2).asValueOf[PVList[ParserValue.Identifier]]
             .map { id => ClassVar(varType, typ, id.name) }
             .foldRight[PVList[ClassVar]](ParserValue.List.Empty)(ParserValue.List.Cons[ClassVar])
@@ -52,10 +60,10 @@ object Parser {
       )
       .rule(StaticOrField, charSeq(Lexer.Static), { _ => Static })
       .rule(StaticOrField, charSeq(Lexer.Field), { _ => Field })
-      .rule(Type, charSeq(Lexer.Int), { _ => ParserValue.Type.Int })
-      .rule(Type, charSeq(Lexer.Char), { _ => ParserValue.Type.Char })
-      .rule(Type, charSeq(Lexer.Boolean), { _ => ParserValue.Type.Boolean })
-      .rule(Type, charSeq(IdentifierToken), { seq => ClassRef(seq.head.asTokenOf[Lexer.Identifier].name) })
+      .rule(Type, charSeq(Lexer.Int), { _ => TypeWrap.Int })
+      .rule(Type, charSeq(Lexer.Char), { _ => TypeWrap.Char })
+      .rule(Type, charSeq(Lexer.Boolean), { _ => TypeWrap.Boolean })
+      .rule(Type, charSeq(IdentifierToken), { seq => TypeWrap.ClassRef(seq.head.asTokenOf[Lexer.Identifier].name) })
       .ruleRep1(VarNameRep, charSeq(VarName), charSeq(Lexer.Comma),
         { seq: DefaultRGP => seq.head.asValueOf[ParserValue.Identifier] },
         ParserValue.List.Cons[ParserValue.Identifier], ParserValue.List.Empty
@@ -66,7 +74,7 @@ object Parser {
         { seq: DefaultRGP =>
           Subroutine(
             seq.head.asValueOf[Subroutine.SubroutineCat],
-            seq(1).asValueOf[ParserValue.Option[ParserValue.Type]].toOption,
+            seq(1).asValueOf[ParserValue.Option[ParserValue.TypeWrap]].toOption,
             seq(2).asValueOf[ParserValue.Identifier].name,
             seq(4).asValueOf[PVList[Subroutine.Parameter]].reverse,
             seq(6).asValueOf[Subroutine.Body]
@@ -82,7 +90,7 @@ object Parser {
       .rule(SubroutineName, charSeq(IdentifierToken), identifierGenerator)
       .ruleRep0(Parameter, charSeq(Type, IdentifierToken), charSeq(Lexer.Comma),
         { seq: DefaultRGP =>
-          Subroutine.Parameter(seq.head.asValueOf[ParserValue.Type], seq(1).asTokenOf[Lexer.Identifier].name)
+          Subroutine.Parameter(seq.head.asValueOf[ParserValue.TypeWrap], seq(1).asTokenOf[Lexer.Identifier].name)
         },
         ParserValue.List.Cons[Subroutine.Parameter], ParserValue.List.Empty
       )
@@ -96,7 +104,7 @@ object Parser {
       )
       .ruleRep0(VarDec, charSeq(Lexer.Var, Type, VarNameRep, Lexer.SemiColon),
         { seq: DefaultRGP =>
-          val typ = seq(1).asValueOf[ParserValue.Type]
+          val typ = seq(1).asValueOf[ParserValue.TypeWrap]
           seq(2).asValueOf[ParserValue.List[ParserValue.Identifier]]
             .map { id => ParserValue.Var(typ, id.name) }
             .foldRight[PVList[ParserValue.Var]](ParserValue.List.Empty)(ParserValue.List.Cons[ParserValue.Var])
@@ -221,47 +229,51 @@ object Parser {
   private def genBinary(f: (Expression, Expression) => Expression)(seq: DefaultRGP) = {
     f(seq.head.asValueOf[Expression], seq(2).asValueOf[Expression])
   }
+}
 
-  object Symbols {
-    val Root = NonTerminalSymbol("ProgramStructure")
-    val ClassVarDec = NonTerminalSymbol("ClassVarDec")
-    val SubroutineDec = NonTerminalSymbol("SubroutineDec")
-    val StaticOrField = NonTerminalSymbol("StaticOrField")
-    val Type = NonTerminalSymbol("Type")
-    val VarNameRep = NonTerminalSymbol("VarNameRep")
-    val VarName = NonTerminalSymbol("VarName")
-    val SubroutineCat = NonTerminalSymbol("FunctionCat")
-    val ReturnType = NonTerminalSymbol("ReturnType")
-    val SubroutineName = NonTerminalSymbol("SubroutineName")
-    val Parameter = NonTerminalSymbol("Parameter")
-    val SubroutineBody = NonTerminalSymbol("SubroutineBody")
-    val VarDec = NonTerminalSymbol("VarDec")
+//noinspection TypeAnnotation
+object ParserSymbols {
+  val Root = NonTerminalSymbol("ProgramStructure")
+  val ClassVarDec = NonTerminalSymbol("ClassVarDec")
+  val SubroutineDec = NonTerminalSymbol("SubroutineDec")
+  val StaticOrField = NonTerminalSymbol("StaticOrField")
+  val Type = NonTerminalSymbol("Type")
+  val VarNameRep = NonTerminalSymbol("VarNameRep")
+  val VarName = NonTerminalSymbol("VarName")
+  val SubroutineCat = NonTerminalSymbol("FunctionCat")
+  val ReturnType = NonTerminalSymbol("ReturnType")
+  val SubroutineName = NonTerminalSymbol("SubroutineName")
+  val Parameter = NonTerminalSymbol("Parameter")
+  val SubroutineBody = NonTerminalSymbol("SubroutineBody")
+  val VarDec = NonTerminalSymbol("VarDec")
 
-    val Statements = NonTerminalSymbol("Statements")
-    val Statement = NonTerminalSymbol("Statement")
-    val LetStatement = NonTerminalSymbol("LetStatement")
-    val IfStatement = NonTerminalSymbol("IfStatement")
-    val WhileStatement = NonTerminalSymbol("WhileStatement")
-    val DoStatement = NonTerminalSymbol("DoStatement")
-    val ReturnStatement = NonTerminalSymbol("ReturnStatement")
-    val ArrayIndex = NonTerminalSymbol("ArrayIndexOpt")
-    val ElseOpt = NonTerminalSymbol("ElseOpt")
-    val ExpressionOpt = NonTerminalSymbol("ExpressionOpt")
+  val Statements = NonTerminalSymbol("Statements")
+  val Statement = NonTerminalSymbol("Statement")
+  val LetStatement = NonTerminalSymbol("LetStatement")
+  val IfStatement = NonTerminalSymbol("IfStatement")
+  val WhileStatement = NonTerminalSymbol("WhileStatement")
+  val DoStatement = NonTerminalSymbol("DoStatement")
+  val ReturnStatement = NonTerminalSymbol("ReturnStatement")
+  val ArrayIndex = NonTerminalSymbol("ArrayIndexOpt")
+  val ElseOpt = NonTerminalSymbol("ElseOpt")
+  val ExpressionOpt = NonTerminalSymbol("ExpressionOpt")
 
-    val Expression = NonTerminalSymbol("Expression")
-    val Term0 = NonTerminalSymbol("Term0") // ( exp ), constant, function call and array access
-    val Term1 = NonTerminalSymbol("Term1") // unary -, ~
-    val Term2 = NonTerminalSymbol("Term2") // *, /
-    val Term3 = NonTerminalSymbol("Term3") // +, -
-    val Term4 = NonTerminalSymbol("Term4") // <. >
-    val Term5 = NonTerminalSymbol("Term5") // =
-    val Term6 = NonTerminalSymbol("Term6") // &
-    val Term7 = NonTerminalSymbol("Term7") // |
-    val SubroutineCall = NonTerminalSymbol("SubroutineCall")
-    val ArgumentList = NonTerminalSymbol("ExpressionList")
-    val Receiver = NonTerminalSymbol("Receiver")
+  val Expression = NonTerminalSymbol("Expression")
+  val Term0 = NonTerminalSymbol("Term0") // ( exp ), constant, function call and array access
+  val Term1 = NonTerminalSymbol("Term1") // unary -, ~
+  val Term2 = NonTerminalSymbol("Term2") // *, /
+  val Term3 = NonTerminalSymbol("Term3") // +, -
+  val Term4 = NonTerminalSymbol("Term4") // <. >
+  val Term5 = NonTerminalSymbol("Term5") // =
+  val Term6 = NonTerminalSymbol("Term6") // &
+  val Term7 = NonTerminalSymbol("Term7") // |
+  val SubroutineCall = NonTerminalSymbol("SubroutineCall")
+  val ArgumentList = NonTerminalSymbol("ExpressionList")
+  val Receiver = NonTerminalSymbol("Receiver")
 
-    val UnaryOp = NonTerminalSymbol("UnaryOp")
-    val KeywordConstant = NonTerminalSymbol("KeywordConstant")
-  }
+  val UnaryOp = NonTerminalSymbol("UnaryOp")
+  val KeywordConstant = NonTerminalSymbol("KeywordConstant")
+
+  val Import = NonTerminalSymbol("Import")
+  val ClassNames = NonTerminalSymbol("ClassNames")
 }

@@ -1,4 +1,4 @@
 package com.github.nishi_7
-package backend.exception
+package back.exception
 
 class N2TCompilerException(msg: String = null, cause: Throwable = null) extends RuntimeException(msg, cause)
